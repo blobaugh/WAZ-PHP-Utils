@@ -24,7 +24,7 @@ class Ini {
          * 
          * @param String $file 
          */
-	public function open($file){
+	public function open($file){ 
             $this->mIni = parse_ini_file($file, true);
         }
 

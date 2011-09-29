@@ -1,5 +1,5 @@
 <?php
-
+set_time_limit(0);
 /**
  * paz is a simple packaging and deployment tool for PHP projects on Windows Azure.
  * Given a simple application needing only a webrole, paz will automagically 
@@ -19,9 +19,28 @@
 
 require_once '../lib/Params.class.php';
 require_once '../lib/FileSystem.class.php';
+require_once '../lib/Ini.class.php';
 
 $p = new Params();
 $fs = new FileSystem();
+
+
+
+/*
+ * Allow user to override the regular Windows Azure SDK for PHP path
+ */
+if(!$p->get('sdkPath')) {
+    if(strstr(strtolower(PHP_OS), "win") != false) {
+        $p->set('sdkPath', "C:\\Program Files\\Windows Azure SDK for PHP");
+    } else {
+        $p->set('sdkPath', "/usr/local/Windows Azure SDK for PHP");
+    }
+}
+if($fs->exists($p->get('sdkPath') . "/trunk/library/Microsoft")) {
+    $sdk = $p->get('sdkPath') . "/trunk/library";
+} else {
+    $sdk = $p->get('sdkPath') . "/library";
+}
 
 /*
  * Ensure all parameters needed are set to something
@@ -35,12 +54,42 @@ checkParams();
  */
 if(is_dir($p->get('deploy'))) {
     
-    echo "\n**** DEPLOYMENT PROCESS STILL IN DEVELOPMENT ****"; exit();
-    echo "\nAttempting to deploy to Windows Azure from pre-created package";
     
-    if(($cspkg = $fs->findByExtension($p->get('deploy'), 'cspkg')) && $fs->exists($p->get('deploy') . "/ServiceConfiguration.cscfg")) {
-        $cscfg = $p->get('deploy') . "/ServiceConfiguration.cscfg";
-        // ****** call deploy tool using $cspkg and $cscfg
+    // Yes, I am using nested if statements instead of &&s. This is for readibility
+    if($p->get('deployment_name')) {
+        echo "\nAttempting to deploy to Windows Azure from pre-created package";
+
+        if(($cspkg = $fs->findByExtension($p->get('deploy'), 'cspkg')) && $fs->exists($p->get('deploy') . "/ServiceConfiguration.cscfg")) {
+            $cscfg = $p->get('deploy') . "/ServiceConfiguration.cscfg";
+            // ****** call deploy tool using $cspkg and $cscfg
+            // deployment createfromlocal -F="C:\config.ini" --Name="dns_prefix" --DeploymentName="deployment_name" --Label="deployment_label" --Staging --PackageLocation="path\to\your.cspkg" --ServiceConfigLocation="path\to\ServiceConfiguration.cscfg" --StorageAccount="your_storage_account_name"
+           
+//            $cmd = "deployment createfromlocal --Name=\"" . $p->get('deployment_name'). "\"";
+//            $cmd .= " --DeploymentName=\"" . $p->get('deployment_name') . "\"";
+//            $cmd .= " --Label=\"" . $p->get('deployment_name') . "\"";
+//            $cmd .= " --PackageLocation=\"" . $cspkg[0] . "\"";
+//            $cmd .= " --ServiceConfigLocation=\"" . $cscfg . "\"";
+//            $cmd .= " --StorageAccount=\"" . $config_ini->get('Azure', 'StorageAccount') . "\"";
+//            $cmd .= " -sid=\"" . $config_ini->get('Azure', 'SubscriptionId') . "\"";
+//            $cmd .= " -cert=\"" . $config_ini->get('Azure', 'PemCertificate') . "\"";
+            
+            $deploymentSlot = "production";
+            if(!$p->get('deploy_prod')) {
+                $deploymentSlot = "staging";
+            }
+            
+        //    deploy($config_ini->get('Azure', 'SubscriptionId'), $config_ini->get('Azure', 'PemCertificate'), $p->get('deployment_name'), $p->get('deployment_name'), $p->get('deployment_name'),
+       //$deploymentSlot, $cspkg[0], $cscfg, $config_ini->get('Azure', 'StorageAccount'));
+         deploy($cspkg[0], $cscfg);   
+            //echo "\n\n$cmd\n\n";
+            // exec($cmd);
+            //echo $config_ini;
+            
+            //echo "\n\n**** NOT ACTUALLY DEPLOYING!! ****";
+            
+        }
+    } else {
+        echo "\nPlease supply a deployment name with -deployment_name";
     }
     
     exit();
@@ -63,12 +112,6 @@ $fs->copy($p->get('in'), $p->get('tempBuild') . "/PhpOnAzure.Web");
  */
 if(!$p->get('noSDK')) {
     echo "\nCopying Windows Azure SDK for PHP Microsoft folder to project";
-    if($fs->exists($p->get('sdkPath') . "/trunk/library/Microsoft")) {
-        $sdk = $p->get('sdkPath') . "/trunk/library";
-    } else {
-        $sdk = $p->get('sdkPath') . "/library";
-    }
-
     $fs->copy($sdk, $p->get('tempBuild') . "/PhpOnAzure.Web");
 }
 
@@ -95,13 +138,14 @@ echo "\nCreating the package...";
 exec("package create -in=" . $p->get('tempBuild') . " -out=" . $p->get('out') . " -dev=" . $p->get('dev'));
 
 echo "\n\nPackage created in " . $p->get('out') . "\n\n";
-die();  // *************** LEFT OFF HERE *************************8888
 /**
  * If the user wants to deploy do so now
  */
 if(!$p->get('dev') && $p->get('deploy')) {
-    echo "\n**** DEPLOYMENT PROCESS STILL IN DEVELOPMENT ****"; exit();
     echo "\nDeploying package to Windows Azure";
+    $cspkg = $fs->findByExtension($p->get('out'), 'cspkg');
+    $cscfg = $p->get('out') . "/ServiceConfiguration.cscfg";
+    deploy($cspkg[0], $cscfg);
 }
 
 /*
@@ -119,6 +163,8 @@ function displayHelp() {
     echo "\n\tout - Output of Windows Azure package. If not specified the project directory from -in will be used";
     echo "\n\tdev - If flag present local development environment will be used";
     echo "\n\tdeploy - Immediatly attempts to deploy the created package to Windows Azure. \n\t\tUsed as a flag, the created package will be uploaded. \n\t\tOptionally supply a path to the folder containing the .cspkg and ServiceConfiguration.cscfg";
+    echo "\n\tdeployment_name - The DNS prefix that will be used (required by -deploy)";
+    echo "\n\tdeploy_prod - If present will deploy to the production slot. Defaults to staging (only valid when used with -deploy)";
     echo "\n\tnoSDK - If present will not copy the Windows Azure SDK for PHP Microsoft folder to project";
     echo "\n\tsdkPath - Override default Windows Azure SDK for PHP path if not default install";
     echo "\n\ttempBuild - Override the temp build location";
@@ -187,15 +233,57 @@ function checkParams() {
     if(!$p->get('noSDK')) {
         $p->set('noSDK', false);
     }
+}
     
-    /*
-     * Allow user to override the regular Windows Azure SDK for PHP path
-     */
-    if(!$p->get('sdkPath')) {
-        if(strstr(strtolower(PHP_OS), "win") != false) {
-            $p->set('sdkPath', "C:\\Program Files\\Windows Azure SDK for PHP");
-        } else {
-            $p->set('sdkPath', "/usr/local/Windows Azure SDK for PHP");
-        }
+            
+function deploy($cspkg, $cscfg) { 
+    global $sdk, $p;
+
+     $config_ini = new Ini();
+     $config_ini->open(__DIR__ . "/../config.ini");
+
+     $subscriptionId = $config_ini->get('Azure', 'SubscriptionId');
+     $certificate = $config_ini->get('Azure', 'PemCertificate');
+     $serviceDnsPrefix = $p->get('deployment_name');
+     $deploymentName = $p->get('deployment_name');
+     $label = $p->get('deployment_name');
+     
+     $deploymentSlot = 'production';
+     if(!$p->get('deploy_prod')) {
+         $deploymentSlot = 'staging';
+     }
+     
+     $packageLocation = $cspkg;
+     $serviceConfigurationLocation = $cscfg;
+     $storageAccount = $config_ini->get('Azure', 'StorageAccount');
+     
+     
+    require_once "$sdk/Microsoft/AutoLoader.php";
+    $startImmediately = true;
+    $warningsAsErrors = false;
+    $waitForOperation = false;
+    echo "\n\nCreating deployment from local package";
+
+    $client = new Microsoft_WindowsAzure_Management_Client($subscriptionId, $certificate, '');
+    echo "\nGetting blob client for service";
+    $blobClient = $client->createBlobClientForService($storageAccount);
+    $blobClient->createContainerIfNotExists('phpazuredeployments');
+    
+    echo "\nUploading " . $cspkg . "...";
+    $blobClient->putBlob('phpazuredeployments', basename($cspkg), $cspkg);
+    $package = $blobClient->getBlobInstance('phpazuredeployments', basename($cspkg));
+    
+    echo "\n\nCreating deployment...";
+    $client->createDeployment($serviceDnsPrefix, $deploymentSlot, $deploymentName, $label, $package->Url, ($serviceConfigurationLocation), $startImmediately, $warningsAsErrors);
+
+    echo "\nWaiting for operation to complete...";
+    $client->waitForOperation();
+    echo "\nRemoving package from blob...";
+   // $blobClient->deleteBlob('phpazuredeployments', basename($packageLocation));
+
+
+    if ($waitForOperation) {
+            echo "\nWaiting for operation to complete...";
+            $client->waitForOperation();
     }
 }
