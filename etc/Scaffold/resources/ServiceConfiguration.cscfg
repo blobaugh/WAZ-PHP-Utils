@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ServiceConfiguration serviceName="PhpOnAzure" xmlns="http://schemas.microsoft.com/ServiceHosting/2008/10/ServiceConfiguration" osFamily="2" osVersion="*">
+  <Role name="WebRole">
+    <Instances count="1" />
+    <ConfigurationSettings>
+
+    <!--
+       - Example of setting a command line parameter in the ServiceConfiguration.cscfg
+       - See the ServiceDefinition.csdef file for the parameter definition
+       -
+       - <Setting name="cmd_param_name" value="$cmd_param_name$" />
+       -->
+    
+
+    <!-- For RDP access. Commented by default -->
+      <!--
+      <Setting name="Microsoft.WindowsAzure.Plugins.RemoteAccess.Enabled" value="true" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.RemoteForwarder.Enabled" value="true" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.RemoteAccess.AccountUsername" value="****" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.RemoteAccess.AccountEncryptedPassword" value="****" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.RemoteAccess.AccountExpiration" value="2039-12-31T23:59:59.0000000-08:00" />
+      -->
+    </ConfigurationSettings>
+    <!-- Certificate for RDP access. Commented by default -->
+    <!--
+    <Certificates>
+      <Certificate name="Microsoft.WindowsAzure.Plugins.RemoteAccess.PasswordEncryption" thumbprint="FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" thumbprintAlgorithm="sha1"/>
+    </Certificates>
+    -->
+
+  </Role>
+</ServiceConfiguration>
