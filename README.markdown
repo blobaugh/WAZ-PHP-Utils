@@ -1,3 +1,3 @@
-Work in progress, not in a releasable state
+Please see the wiki for installation instructions
 
-Some utilities that make running and managing PHP applications on Windows Azure simple
+https://github.com/blobaugh/WAZ-PHP-Utils/wiki
